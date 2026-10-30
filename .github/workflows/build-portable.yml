@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: [trail]
-    paths: ["src/**", "samples/PixelShaders/**", ".github/workflows/build-portable.yml"]
+    paths: ["src/**", "res/**", "samples/PixelShaders/**", ".github/workflows/build-portable.yml"]
 
 jobs:
   build:
