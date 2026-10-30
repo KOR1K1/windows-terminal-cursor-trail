@@ -71,6 +71,7 @@ namespace Microsoft::Console::Render::Atlas
         void SetPixelShaderPath(std::wstring_view value) noexcept;
         void SetPixelShaderImagePath(std::wstring_view value) noexcept;
         void SetRetroTerminalEffect(bool enable) noexcept;
+        void SetCursorTrail(bool enable) noexcept;
         void SetSoftwareRendering(bool enable) noexcept;
         void SetDisablePartialInvalidation(bool enable) noexcept;
         void SetGraphicsAPI(GraphicsAPI graphicsAPI) noexcept;
@@ -100,6 +101,8 @@ namespace Microsoft::Console::Render::Atlas
         void _invalidateSpans(std::span<const til::point_span> spans, const TextBuffer& buffer) noexcept;
 
         // AtlasEngine.r.cpp
+        void _extendAnimation(u64 now) noexcept;
+        [[nodiscard]] bool _animationPending() const noexcept;
         ATLAS_ATTR_COLD void _recreateAdapter();
         ATLAS_ATTR_COLD void _recreateBackend();
         [[nodiscard]] ATLAS_ATTR_COLD bool _handleSwapChainUpdate(HANDLE shutdownEvent);

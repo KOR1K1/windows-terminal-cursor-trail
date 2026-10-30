@@ -85,7 +85,25 @@ CATCH_RETURN()
 
 [[nodiscard]] bool AtlasEngine::RequiresContinuousRedraw() noexcept
 {
-    return ATLAS_DEBUG_CONTINUOUS_REDRAW || (_b && _b->RequiresContinuousRedraw());
+    return ATLAS_DEBUG_CONTINUOUS_REDRAW || (_b && _b->RequiresContinuousRedraw()) || _animationPending();
+}
+
+void AtlasEngine::_extendAnimation(u64 now) noexcept
+{
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+    _p.animationDeadline = now + std::bit_cast<u64>(freq.QuadPart) * animationDurationMs / 1000;
+}
+
+bool AtlasEngine::_animationPending() const noexcept
+{
+    if (!_p.animationDeadline)
+    {
+        return false;
+    }
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    return std::bit_cast<u64>(now.QuadPart) < _p.animationDeadline;
 }
 
 bool AtlasEngine::WaitUntilCanRender(HANDLE shutdownEvent) noexcept
@@ -173,6 +191,8 @@ void AtlasEngine::_recreateBackend()
     // D3D11 defers the destruction of objects and only one swap chain can be associated with a
     // HWND, IWindow, or composition surface at a time. --> Destroy it while we still have the old device.
     _destroySwapChain();
+    // The new backend declares its own, and BackendD2D animates nothing.
+    _p.animatedInputs = AnimatedInput::None;
 
     auto graphicsAPI = _p.s->target->graphicsAPI;
 

@@ -399,6 +399,7 @@ namespace Microsoft::Console::Render::Atlas
         std::wstring customPixelShaderPath;
         std::wstring customPixelShaderImagePath;
         bool useRetroTerminalEffect = false;
+        bool useCursorTrail = false;
     };
 
     struct Settings
@@ -498,6 +499,17 @@ namespace Microsoft::Console::Render::Atlas
         til::CoordType dirtyBottom = 0;
     };
 
+    // Inputs that a time based effect can animate. When one changes, the renderer keeps drawing
+    // frames for animationDurationMs instead of waiting for the next invalidation.
+    enum class AnimatedInput : u8
+    {
+        None = 0,
+        Cursor = 1 << 0,
+    };
+    DEFINE_ENUM_FLAG_OPERATORS(AnimatedInput);
+
+    inline constexpr u64 animationDurationMs = 1000;
+
     struct RenderingPayload
     {
         //// Parameters which are constant across backends.
@@ -573,6 +585,20 @@ namespace Microsoft::Console::Render::Atlas
         std::array<til::generation_t, 3> colorBitmapGenerations{ 1, 1, 1 };
         // In columns/rows.
         til::rect cursorRect;
+        // Last two distinct cursor positions, in columns/rows. Unlike cursorRect these survive
+        // the blink-off phase, so an animation never starts from an empty rect.
+        struct
+        {
+            til::rect previous;
+            til::rect current;
+            // QueryPerformanceCounter() at the time `current` was set. 0 until the cursor is first drawn.
+            u64 changeTick = 0;
+        } cursorMotion;
+        // Which inputs the active effect animates. Set by the backend.
+        AnimatedInput animatedInputs = AnimatedInput::None;
+        // QueryPerformanceCounter() tick until which frames keep being drawn even if nothing is invalidated.
+        // A change to an animated input extends it by animationDurationMs.
+        u64 animationDeadline = 0;
         // The viewport/SwapChain area to be presented. In pixel.
         // NOTE:
         //   This cannot use til::rect, because til::rect generally expects positive coordinates only

@@ -39,6 +39,9 @@
     <ClInclude Include="wic.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="cursor_trail_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
     <FxCompile Include="custom_shader_ps.hlsl">
       <ShaderType>Pixel</ShaderType>
     </FxCompile>

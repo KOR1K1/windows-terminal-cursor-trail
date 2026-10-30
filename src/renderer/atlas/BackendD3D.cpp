@@ -7,6 +7,7 @@
 #include <til/unicode.h>
 
 #if TIL_FEATURE_CONHOSTATLASENGINECUSTOMSHADERS_ENABLED
+#include <cursor_trail_ps.h>
 #include <custom_shader_ps.h>
 #include <custom_shader_vs.h>
 #endif
@@ -214,6 +215,7 @@ void BackendD3D::Render(RenderingPayload& p)
     if (_generation != p.s.generation())
     {
         _handleSettingsUpdate(p);
+        p.animatedInputs = _customShaderUsesCursor ? AnimatedInput::Cursor : AnimatedInput::None;
     }
 
     _debugUpdateShaders(p);
@@ -378,6 +380,7 @@ void BackendD3D::_recreateCustomShader(const RenderingPayload& p)
     _customShaderTexture.reset();
     _customShaderTextureView.reset();
     _requiresContinuousRedraw = false;
+    _customShaderUsesCursor = false;
 
     if (!p.s->misc->customPixelShaderPath.empty())
     {
@@ -445,6 +448,17 @@ void BackendD3D::_recreateCustomShader(const RenderingPayload& p)
                             _requiresContinuousRedraw = WI_IsFlagSet(variableDescriptor.uFlags, D3D_SVF_USED);
                         }
                     }
+
+                    for (const auto name : { "CursorCurrent", "CursorPrevious", "CursorColor", "CursorElapsed" })
+                    {
+                        // Same caveat as above: a missing variable yields an object whose GetDesc() fails.
+                        D3D11_SHADER_VARIABLE_DESC variableDescriptor;
+                        const auto variableReflector = constantBufferReflector->GetVariableByName(name);
+                        if (variableReflector && SUCCEEDED(variableReflector->GetDesc(&variableDescriptor)) && WI_IsFlagSet(variableDescriptor.uFlags, D3D_SVF_USED))
+                        {
+                            _customShaderUsesCursor = true;
+                        }
+                    }
                 }
             }
             else
@@ -495,6 +509,13 @@ void BackendD3D::_recreateCustomShader(const RenderingPayload& p)
     else if (p.s->misc->useRetroTerminalEffect)
     {
         THROW_IF_FAILED(p.device->CreatePixelShader(&custom_shader_ps[0], sizeof(custom_shader_ps), nullptr, _customPixelShader.put()));
+    }
+    else if (p.s->misc->useCursorTrail)
+    {
+        // Runs through the custom shader path for its offscreen texture: the renderer only
+        // redraws invalidated rows, so drawing the trail straight into the frame would leave stale pixels.
+        THROW_IF_FAILED(p.device->CreatePixelShader(&cursor_trail_ps[0], sizeof(cursor_trail_ps), nullptr, _customPixelShader.put()));
+        _customShaderUsesCursor = true;
     }
 
     if (_customPixelShader)
@@ -2054,6 +2075,19 @@ void BackendD3D::_drawCursorBackground(const RenderingPayload& p)
         }
     }
 
+    {
+        i32 left = INT32_MAX, top = INT32_MAX, right = INT32_MIN, bottom = INT32_MIN;
+        for (const auto& c : _cursorRects)
+        {
+            left = std::min<i32>(left, c.position.x);
+            top = std::min<i32>(top, c.position.y);
+            right = std::max<i32>(right, c.position.x + c.size.x);
+            bottom = std::max<i32>(bottom, c.position.y + c.size.y);
+        }
+        _cursorShape = { left - _cursorPosition.left, top - _cursorPosition.top, right - left, bottom - top };
+        _cursorShapeColor = _cursorRects.front().background;
+    }
+
     for (const auto& c : _cursorRects)
     {
         _appendQuad() = {
@@ -2331,6 +2365,19 @@ void BackendD3D::_executeCustomShader(RenderingPayload& p)
         const auto now = queryPerfCount();
         const auto time = (now % _customShaderPerfTickMod) * _customShaderSecsPerPerfTick;
 
+        const auto& motion = p.cursorMotion;
+        const auto cellSize = p.s->font->cellSize;
+        const auto cursorToPx = [&](const til::rect& r) {
+            return f32x4{
+                static_cast<f32>(r.left * cellSize.x + _cursorShape.x),
+                static_cast<f32>(r.top * cellSize.y + _cursorShape.y),
+                static_cast<f32>(_cursorShape.z),
+                static_cast<f32>(_cursorShape.w),
+            };
+        };
+        // Clamped to the range of `time`, long after any animation has settled.
+        const auto sinceChange = motion.changeTick ? std::min(now - motion.changeTick, _customShaderPerfTickMod) : _customShaderPerfTickMod;
+
         const CustomConstBuffer data{
             .time = time,
             .scale = static_cast<f32>(p.s->font->dpi) / static_cast<f32>(USER_DEFAULT_SCREEN_DPI),
@@ -2339,6 +2386,10 @@ void BackendD3D::_executeCustomShader(RenderingPayload& p)
                 static_cast<f32>(_viewportCellCount.y * p.s->font->cellSize.y),
             },
             .background = colorFromU32Premultiply<f32x4>(p.s->misc->backgroundColor),
+            .cursorCurrent = cursorToPx(motion.current),
+            .cursorPrevious = cursorToPx(motion.previous),
+            .cursorColor = colorFromU32Premultiply<f32x4>(_cursorShapeColor),
+            .cursorElapsed = sinceChange * _customShaderSecsPerPerfTick,
         };
 
         D3D11_MAPPED_SUBRESOURCE mapped{};

@@ -424,6 +424,14 @@ void AtlasEngine::SetRetroTerminalEffect(bool enable) noexcept
     }
 }
 
+void AtlasEngine::SetCursorTrail(bool enable) noexcept
+{
+    if (_api.s->misc->useCursorTrail != enable)
+    {
+        _api.s.write()->misc.write()->useCursorTrail = enable;
+    }
+}
+
 void AtlasEngine::SetSoftwareRendering(bool enable) noexcept
 {
     if (_api.s->target->useWARP != enable)

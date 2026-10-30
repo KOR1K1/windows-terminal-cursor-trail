@@ -644,6 +644,22 @@ try
 
         if (_p.cursorRect)
         {
+            // Tracked here and not in the backend, because RequiresContinuousRedraw() is polled
+            // during EndPaint(), before Present() calls into the backend's Render().
+            auto& motion = _p.cursorMotion;
+            if (_p.cursorRect != motion.current)
+            {
+                LARGE_INTEGER now;
+                QueryPerformanceCounter(&now);
+                motion.previous = motion.current ? motion.current : _p.cursorRect;
+                motion.current = _p.cursorRect;
+                motion.changeTick = std::bit_cast<u64>(now.QuadPart);
+                if (WI_IsFlagSet(_p.animatedInputs, AnimatedInput::Cursor))
+                {
+                    _extendAnimation(motion.changeTick);
+                }
+            }
+
             _p.dirtyRectInPx.left = std::min(_p.dirtyRectInPx.left, left * _p.s->font->cellSize.x);
             _p.dirtyRectInPx.top = std::min(_p.dirtyRectInPx.top, top * _p.s->font->cellSize.y);
             _p.dirtyRectInPx.right = std::max(_p.dirtyRectInPx.right, right * _p.s->font->cellSize.x);

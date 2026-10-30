@@ -55,6 +55,12 @@ namespace Microsoft::Console::Render::Atlas
             alignas(sizeof(f32)) f32 scale = 0;
             alignas(sizeof(f32x2)) f32x2 resolution;
             alignas(sizeof(f32x4)) f32x4 background;
+            // Cursor rects are x/y/width/height in pixels, matching SV_POSITION.
+            alignas(sizeof(f32x4)) f32x4 cursorCurrent;
+            alignas(sizeof(f32x4)) f32x4 cursorPrevious;
+            alignas(sizeof(f32x4)) f32x4 cursorColor;
+            // Seconds since the cursor last moved. Unlike `time` it doesn't wrap around.
+            alignas(sizeof(f32)) f32 cursorElapsed = 0;
 #pragma warning(suppress : 4324) // 'CustomConstBuffer': structure was padded due to alignment specifier
         };
 
@@ -328,11 +334,16 @@ namespace Microsoft::Console::Render::Atlas
         til::small_vector<CursorRect, 6> _cursorRects;
         // The bounding rect of _cursorRects in pixels.
         til::rect _cursorPosition;
+        // Bounding box of the last drawn cursor shape, relative to the top-left of its cell.
+        // Kept across blink-off frames, which have no _cursorRects.
+        i32x4 _cursorShape{};
+        u32 _cursorShapeColor = 0;
 
         f32 _curlyLineHalfHeight = 0.0f;
         FontDecorationPosition _curlyUnderline;
 
         bool _requiresContinuousRedraw = false;
+        bool _customShaderUsesCursor = false;
 
 #if ATLAS_DEBUG_SHOW_DIRTY
         i32r _presentRects[9]{};
