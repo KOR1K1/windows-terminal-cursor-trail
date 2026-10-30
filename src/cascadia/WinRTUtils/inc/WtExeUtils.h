@@ -46,7 +46,7 @@ _TIL_INLINEPREFIX bool IsDevBuild()
                 const auto package = winrt::Windows::ApplicationModel::Package::Current();
                 const auto id = package.Id();
                 const auto name = id.FullName();
-                return til::starts_with(name, L"WindowsTerminalDev");
+                return til::starts_with(name, L"WindowsTerminalDev") || til::starts_with(name, L"TerminalTrail");
             }
             CATCH_LOG();
         }

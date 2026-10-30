@@ -1,13 +1,13 @@
-name: Build portable x64
+name: Build x64
 
-# Mirrors build/pipelines/templates-v2/job-build-project.yml without signing,
-# and publishes the unpackaged (portable) distribution as an artifact.
+# Mirrors build/pipelines/templates-v2/job-build-project.yml. Publishes the unpackaged
+# (portable) distribution and, when the signing secrets exist, a signed MSIX.
 
 on:
   workflow_dispatch:
   push:
     branches: [trail]
-    paths: ["src/**", "res/**", "samples/PixelShaders/**", ".github/workflows/build-portable.yml"]
+    paths: ["src/**", "res/**", "samples/PixelShaders/**", "fork/**", ".github/workflows/build-portable.yml"]
 
 jobs:
   build:
@@ -16,6 +16,8 @@ jobs:
     env:
       Platform: x64
       Configuration: Release
+      # Secrets can't be used in `if`, and forks of this repo won't have them.
+      HAS_SIGNING: ${{ secrets.SIGNING_PFX != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,25 +51,61 @@ jobs:
         shell: pwsh
         run: .\build\scripts\Set-LatestVCToolsVersion.ps1
 
+      # Windows only installs a package over an older one, so every build gets a higher version.
+      - name: Set package version
+        shell: pwsh
+        run: |
+          $manifest = 'src\cascadia\CascadiaPackage\Package-Dev.appxmanifest'
+          (Get-Content $manifest -Raw).Replace('Version="0.0.1.0"', "Version=`"1.25.$env:GITHUB_RUN_NUMBER.0`"") | Set-Content $manifest -NoNewline
+
       - name: Build Terminal package
         shell: pwsh
         run: msbuild OpenConsole.slnx "/t:Terminal\CascadiaPackage" /p:Platform=$env:Platform /p:Configuration=$env:Configuration /p:WindowsTerminalBranding=Dev /m /bl:msbuild.binlog
+
+      - name: Locate SDK tools
+        shell: pwsh
+        run: |
+          $sdk = Get-ItemPropertyValue "HKLM:\Software\Microsoft\Windows Kits\Installed Roots" -Name KitsRoot10
+          $makeAppx = Get-ChildItem "$sdk\bin\10.*\x64\MakeAppx.exe" | Sort-Object { [version]$_.Directory.Parent.Name } -Descending | Select-Object -First 1
+          "SDK_BIN=$($makeAppx.DirectoryName)" >> $env:GITHUB_ENV
 
       - name: Build portable distribution
         shell: pwsh
         run: |
           $msix = Get-ChildItem -Recurse -Filter "CascadiaPackage*.msix" | Select-Object -First 1
           $xaml = (Get-Item "src\cascadia\CascadiaPackage\AppPackages\*\Dependencies\$env:Platform\Microsoft.UI.Xaml*.appx").FullName
-          $sdk = Get-ItemPropertyValue "HKLM:\Software\Microsoft\Windows Kits\Installed Roots" -Name KitsRoot10
-          $makeAppx = Get-ChildItem "$sdk\bin\*\x64\MakeAppx.exe" | Sort-Object FullName -Descending | Select-Object -First 1
           New-Item -ItemType Directory out | Out-Null
-          .\build\scripts\New-UnpackagedTerminalDistribution.ps1 -TerminalAppX $msix.FullName -XamlAppX $xaml -Destination out -MakeAppxPath $makeAppx.FullName -PortableMode
+          .\build\scripts\New-UnpackagedTerminalDistribution.ps1 -TerminalAppX $msix.FullName -XamlAppX $xaml -Destination out -MakeAppxPath "$env:SDK_BIN\MakeAppx.exe" -PortableMode
           Copy-Item samples\PixelShaders\CursorTrail.hlsl out
+
+      - name: Sign MSIX
+        if: env.HAS_SIGNING == 'true'
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ secrets.SIGNING_PFX }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'signing.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX))
+          $msix = Get-ChildItem -Recurse -Filter "CascadiaPackage*.msix" | Select-Object -First 1
+          & "$env:SDK_BIN\signtool.exe" sign /fd SHA256 /f $pfx /p $env:SIGNING_PASSWORD $msix.FullName
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Remove-Item $pfx
+          New-Item -ItemType Directory msix\Dependencies | Out-Null
+          Copy-Item $msix.FullName msix
+          Copy-Item "src\cascadia\CascadiaPackage\AppPackages\*\Dependencies\$env:Platform\*.appx" msix\Dependencies
+          Copy-Item fork\TerminalTrail.cer, fork\Install-TerminalTrail.ps1 msix
 
       - uses: actions/upload-artifact@v4
         with:
           name: terminal-portable-x64
           path: out/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terminal-msix-x64
+          path: msix/
+          if-no-files-found: ignore
 
       # Symbols for the binaries in the portable zip, to read crash dumps.
       - uses: actions/upload-artifact@v4

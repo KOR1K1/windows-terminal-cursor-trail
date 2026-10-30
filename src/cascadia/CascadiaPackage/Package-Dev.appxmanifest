@@ -18,13 +18,13 @@
   IgnorableNamespaces="uap mp rescap uap3 uap17 desktop6 virtualization">
 
   <Identity
-    Name="WindowsTerminalDev"
-    Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    Name="TerminalTrail"
+    Publisher="CN=KOR1K1"
     Version="0.0.1.0" />
 
   <Properties>
-    <DisplayName>ms-resource:AppStoreNameDev</DisplayName>
-    <PublisherDisplayName>A Lone Developer</PublisherDisplayName>
+    <DisplayName>Terminal Trail</DisplayName>
+    <PublisherDisplayName>KOR1K1</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
     <!-- Older versions of Windows 10 respect this -->
     <desktop6:RegistryWriteVirtualization>disabled</desktop6:RegistryWriteVirtualization>
@@ -50,7 +50,7 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="ms-resource:AppNameDev"
+        DisplayName="Terminal Trail"
         Description="ms-resource:AppDescriptionDev"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
@@ -59,7 +59,7 @@
           Wide310x150Logo="Images\Wide310x150Logo.png"
           Square71x71Logo="Images\SmallTile.png"
           Square310x310Logo="Images\LargeTile.png"
-          ShortName="ms-resource:AppShortNameDev">
+          ShortName="Terminal Trail">
           <uap:ShowNameOnTiles>
             <uap:ShowOn Tile="square150x150Logo"/>
             <uap:ShowOn Tile="wide310x150Logo"/>
@@ -78,7 +78,7 @@
           <uap5:StartupTask
             TaskId="StartTerminalOnLoginTask"
             Enabled="false"
-            DisplayName="ms-resource:AppNameDev" />
+            DisplayName="Terminal Trail" />
         </uap5:Extension>
         <uap3:Extension Category="windows.appExtensionHost">
               <uap3:AppExtensionHost>
@@ -88,8 +88,8 @@
         <uap3:Extension Category="windows.appExtension">
             <uap3:AppExtension Name="com.microsoft.windows.console.host"
                 Id="OpenConsole-Dev"
-                DisplayName="OpenConsole Dev"
-                Description="Console host built from microsoft/terminal open source repository"
+                DisplayName="OpenConsole (Terminal Trail)"
+                Description="Console host built from the Terminal Trail fork of microsoft/terminal"
                 PublicFolder="Public">
                 <uap3:Properties>
                     <Clsid>{1F9F2BF5-5BC3-4F17-B0E6-912413F1F451}</Clsid>
@@ -99,8 +99,8 @@
         <uap3:Extension Category="windows.appExtension">
             <uap3:AppExtension Name="com.microsoft.windows.terminal.host"
                 Id="Terminal-Dev"
-                DisplayName="Terminal Dev"
-                Description="Terminal host built from microsoft/terminal open source repository"
+                DisplayName="Terminal Trail"
+                Description="Terminal host built from the Terminal Trail fork of microsoft/terminal"
                 PublicFolder="Public">
                 <uap3:Properties>
                     <Clsid>{051F34EE-C1FD-4B19-AF75-9BA54648434C}</Clsid>
