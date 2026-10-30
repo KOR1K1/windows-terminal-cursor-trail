@@ -1169,6 +1169,14 @@
     <value>Показывать эффекты терминалов в стиле ретро, такие как светящийся текст и линии сканирования.</value>
     <comment>A description for what the "retro terminal effects" setting does. Presented near "Profile_RetroTerminalEffect". "Retro" is a common English prefix that suggests a nostalgic, dated appearance.</comment>
   </data>
+  <data name="Profile_CursorTrail.Header" xml:space="preserve">
+    <value>Шлейф курсора</value>
+    <comment>Header for a control to toggle an animation that leaves a short fading trail behind the cursor when it moves.</comment>
+  </data>
+  <data name="Profile_CursorTrail.HelpText" xml:space="preserve">
+    <value>Курсор оставляет короткий размытый шлейф, когда перескакивает на новое место. Не работает, если включён пиксельный шейдер или ретро-эффекты.</value>
+    <comment>A description for what the "cursor trail" setting does. Presented near "Profile_CursorTrail".</comment>
+  </data>
   <data name="Profile_AdjustIndistinguishableColors.Header" xml:space="preserve">
     <value>Автоматическая регулировка освещенности неразличимого текста</value>
     <comment>Header for a control to toggle if we should adjust the foreground color's lightness to make it more visible when necessary, based on the background color.</comment>

@@ -13,6 +13,7 @@ namespace Microsoft.Terminal.Control
         // IntenseIsBold and IntenseIsBright are in Core Appearance
         Single Opacity { get; };
         Boolean UseAcrylic { get; };
+        Boolean CursorTrail { get; };
 
         // Experimental settings
         Boolean RetroTerminalEffect { get; };

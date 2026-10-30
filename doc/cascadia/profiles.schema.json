@@ -280,6 +280,10 @@
           "description": "When set to true, enable retro terminal effects when unfocused. This is an experimental feature, and its continued existence is not guaranteed.",
           "type": "boolean"
         },
+        "cursorTrail": {
+          "description": "When set to true, the cursor leaves a short motion-blurred trail when it moves, when unfocused. Ignored while `experimental.pixelShaderPath` or `experimental.retroTerminalEffect` is set.",
+          "type": "boolean"
+        },
         "experimental.pixelShaderPath": {
           "description": "Use to set a path to a pixel shader to use with the Terminal when unfocused. Overrides `experimental.retroTerminalEffect`. This is an experimental feature, and its continued existence is not guaranteed.",
           "type": "string"
@@ -2944,6 +2948,11 @@
         },
         "experimental.retroTerminalEffect": {
           "description": "When set to true, enable retro terminal effects. This is an experimental feature, and its continued existence is not guaranteed.",
+          "type": "boolean"
+        },
+        "cursorTrail": {
+          "description": "When set to true, the cursor leaves a short motion-blurred trail when it moves. Ignored while `experimental.pixelShaderPath` or `experimental.retroTerminalEffect` is set.",
+          "default": false,
           "type": "boolean"
         },
         "experimental.showMarksOnScrollbar": {

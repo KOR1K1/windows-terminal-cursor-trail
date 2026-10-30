@@ -527,6 +527,16 @@
                 </Grid>
             </local:SettingContainer>
 
+            <!--  Cursor Trail  -->
+            <local:SettingContainer x:Name="CursorTrail"
+                                    x:Uid="Profile_CursorTrail"
+                                    ClearSettingValue="{x:Bind Appearance.ClearCursorTrail}"
+                                    HasSettingValue="{x:Bind Appearance.HasCursorTrail, Mode=OneWay}"
+                                    SettingOverrideSource="{x:Bind Appearance.CursorTrailOverrideSource, Mode=OneWay}">
+                <ToggleSwitch IsOn="{x:Bind Appearance.CursorTrail, Mode=TwoWay}"
+                              Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+            </local:SettingContainer>
+
             <!--  Cursor Color  -->
             <local:SettingContainer x:Name="CursorColor"
                                     x:Uid="Profile_CursorColor"

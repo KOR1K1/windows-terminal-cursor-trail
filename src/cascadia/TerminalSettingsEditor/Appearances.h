@@ -152,6 +152,7 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
         OBSERVABLE_PROJECTED_SETTING(_appearance, RetroTerminalEffect);
         OBSERVABLE_PROJECTED_SETTING(_appearance, CursorShape);
         OBSERVABLE_PROJECTED_SETTING(_appearance, CursorHeight);
+        OBSERVABLE_PROJECTED_SETTING(_appearance, CursorTrail);
         OBSERVABLE_PROJECTED_SETTING(_appearance, DarkColorSchemeName);
         OBSERVABLE_PROJECTED_SETTING(_appearance, LightColorSchemeName);
         OBSERVABLE_PROJECTED_SETTING(_appearance, BackgroundImagePath);
