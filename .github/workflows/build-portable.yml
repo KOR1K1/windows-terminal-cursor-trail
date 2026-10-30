@@ -1,0 +1,87 @@
+name: Build portable x64
+
+# Mirrors build/pipelines/templates-v2/job-build-project.yml without signing,
+# and publishes the unpackaged (portable) distribution as an artifact.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [trail]
+    paths: ["src/**", "samples/PixelShaders/**", ".github/workflows/build-portable.yml"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    env:
+      Platform: x64
+      Configuration: Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        shell: pwsh
+        run: |
+          & 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe' -all -format text -property displayName,installationVersion
+          Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory | Select-Object -Expand Name
+
+      - uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+
+      - uses: nuget/setup-nuget@v2
+
+      - name: Locate vcpkg
+        shell: pwsh
+        run: |
+          $vs = & 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe' -requires Microsoft.VisualStudio.Component.Vcpkg -property installationPath -latest
+          if ($vs) { $root = Join-Path $vs 'VC\vcpkg' } else { $root = $env:VCPKG_INSTALLATION_ROOT }
+          "VCPKG_ROOT=$root" >> $env:GITHUB_ENV
+
+      - name: Restore NuGet packages
+        shell: pwsh
+        run: |
+          nuget restore build/packages.config -ConfigFile NuGet.config -PackagesDirectory packages
+          msbuild OpenConsole.slnx /t:Restore /p:Platform=$env:Platform /p:Configuration=$env:Configuration /m
+          nuget restore dep/nuget/packages.config -ConfigFile NuGet.config -PackagesDirectory packages
+
+      - name: Pin VC tools version
+        shell: pwsh
+        run: .\build\scripts\Set-LatestVCToolsVersion.ps1
+
+      - name: Build Terminal package
+        shell: pwsh
+        run: msbuild OpenConsole.slnx "/t:Terminal\CascadiaPackage" /p:Platform=$env:Platform /p:Configuration=$env:Configuration /p:WindowsTerminalBranding=Dev /m /bl:msbuild.binlog
+
+      - name: Build portable distribution
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem -Recurse -Filter "CascadiaPackage*.msix" | Select-Object -First 1
+          $xaml = (Get-Item "src\cascadia\CascadiaPackage\AppPackages\*\Dependencies\$env:Platform\Microsoft.UI.Xaml*.appx").FullName
+          $sdk = Get-ItemPropertyValue "HKLM:\Software\Microsoft\Windows Kits\Installed Roots" -Name KitsRoot10
+          $makeAppx = Get-ChildItem "$sdk\bin\*\x64\MakeAppx.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          New-Item -ItemType Directory out | Out-Null
+          .\build\scripts\New-UnpackagedTerminalDistribution.ps1 -TerminalAppX $msix.FullName -XamlAppX $xaml -Destination out -MakeAppxPath $makeAppx.FullName -PortableMode
+          Copy-Item samples\PixelShaders\CursorTrail.hlsl out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terminal-portable-x64
+          path: out/*
+
+      # Symbols for the binaries in the portable zip, to read crash dumps.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: symbols-x64
+          path: |
+            bin/x64/Release/OpenConsole.pdb
+            bin/x64/Release/WindowsTerminal/WindowsTerminal.pdb
+            bin/x64/Release/**/TerminalApp.pdb
+            bin/x64/Release/**/Microsoft.Terminal.Control.pdb
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: msbuild-binlog
+          path: msbuild.binlog
